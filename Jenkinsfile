@@ -84,7 +84,9 @@ pipeline {
                     --dns-name-label ${DNS_NAME} \
                     --ports 80 \
                     --ip-address Public \
-                    --os-type Linux
+                    --os-type Linux \
+                    --cpu 1 \
+                    --memory 2
                     """
                 }
             }
