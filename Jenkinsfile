@@ -6,7 +6,6 @@ pipeline {
         IMAGE_TAG = "latest"
         RESOURCE_GROUP = "rg-techstore-nilesh-si"
         CONTAINER_GROUP = "techstore-group"
-        DNS_NAME = "techstore-nilu-demo"
     }
 
     stages {
