@@ -2,84 +2,46 @@ pipeline {
     agent any
 
     environment {
-        ACR_LOGIN_SERVER = "acrtechstorenilu.azurecr.io"
-        IMAGE_TAG = "latest"
-        RESOURCE_GROUP = "rg-techstore-nilesh-si"
-        CONTAINER_GROUP = "techstore-group"
+        REGISTRY = "acrtechstorenilesh.azurecr.io"
+        IMAGE_NAME = "techstore-fullstack"
     }
 
     stages {
 
-        stage('Checkout Code') {
+        stage('Clone Repo') {
             steps {
-                checkout scm
+                git branch: 'main',
+                url: 'https://github.com/NiluJ/Jenkins_DB.git'
             }
         }
 
-        stage('Build Backend Image') {
+        stage('Build Docker Image') {
             steps {
-                script {
-                    docker.build("${ACR_LOGIN_SERVER}/backend:${IMAGE_TAG}", "./backend")
-                }
+                sh 'docker build -t $IMAGE_NAME:v1 .'
             }
         }
 
-        stage('Build Frontend Image') {
+        stage('Tag Image for ACR') {
             steps {
-                script {
-                    docker.build("${ACR_LOGIN_SERVER}/frontend:${IMAGE_TAG}", "./frontend")
-                }
+                sh 'docker tag $IMAGE_NAME:v1 $REGISTRY/$IMAGE_NAME:v1'
             }
         }
 
         stage('Login to ACR') {
             steps {
                 withCredentials([usernamePassword(
-                    credentialsId: 'acr-techstore-cred',
+                    credentialsId: 'acr-login',
                     usernameVariable: 'ACR_USER',
                     passwordVariable: 'ACR_PASS'
                 )]) {
-
-                    sh """
-                    echo \$ACR_PASS | docker login ${ACR_LOGIN_SERVER} -u \$ACR_USER --password-stdin
-                    """
+                    sh 'echo $ACR_PASS | docker login $REGISTRY -u $ACR_USER --password-stdin'
                 }
             }
         }
 
-        stage('Push Backend Image') {
+        stage('Push Image to ACR') {
             steps {
-                sh "docker push ${ACR_LOGIN_SERVER}/backend:${IMAGE_TAG}"
-            }
-        }
-
-        stage('Push Frontend Image') {
-            steps {
-                sh "docker push ${ACR_LOGIN_SERVER}/frontend:${IMAGE_TAG}"
-            }
-        }
-
-        stage('Deploy Multi-Container ACI using YAML') {
-            steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'acr-techstore-cred',
-                    usernameVariable: 'ACR_USER',
-                    passwordVariable: 'ACR_PASS'
-                )]) {
-
-                    sh """
-                    sed -i 's/PASSWORD_PLACEHOLDER/'"\$ACR_PASS"'/g' aci-deployment.yaml
-
-                    az container delete \
-                    --resource-group ${RESOURCE_GROUP} \
-                    --name ${CONTAINER_GROUP} \
-                    --yes || true
-
-                    az container create \
-                    --resource-group ${RESOURCE_GROUP} \
-                    --file aci-deployment.yaml
-                    """
-                }
+                sh 'docker push $REGISTRY/$IMAGE_NAME:v1'
             }
         }
 
