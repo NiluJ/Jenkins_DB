@@ -1,119 +1,97 @@
-const fs = require('fs');
-const path = require('path');
+const db = require("../db");
 
-const cartPath = path.join(__dirname, '../data/cart.json');
-const productsPath = path.join(__dirname, '../data/products.json');
+const getCart = async (req, res) => {
+  console.log("Cart requested");
 
-const getCart = (req, res) => {
-  console.log('Cart requested');
-
-  fs.readFile(cartPath, 'utf8', (err, data) => {
-    if (err) {
-      return res.status(500).json({ error: 'Failed to read cart' });
-    }
-    res.json(JSON.parse(data));
-  });
+  try {
+    const [rows] = await db.query("SELECT * FROM cart");
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to read cart" });
+  }
 };
 
-const getCartTotal = (req, res) => {
-  console.log('Cart total requested');
+const getCartTotal = async (req, res) => {
+  console.log("Cart total requested");
 
-  fs.readFile(cartPath, 'utf8', (err, data) => {
-    if (err) {
-      return res.status(500).json({ error: 'Failed to read cart' });
-    }
+  try {
+    const [rows] = await db.query(
+      "SELECT SUM(price * quantity) AS total FROM cart"
+    );
 
-    const cart = JSON.parse(data);
-    const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const total = rows[0].total || 0;
 
     console.log(`Updated total: $${total.toFixed(2)}`);
+
     res.json({ total: total.toFixed(2) });
-  });
+
+  } catch (err) {
+    res.status(500).json({ error: "Failed to calculate total" });
+  }
 };
 
-const addToCart = (req, res) => {
+const addToCart = async (req, res) => {
   const { productId } = req.body;
 
-  fs.readFile(productsPath, 'utf8', (err, productsData) => {
-    if (err) {
-      return res.status(500).json({ error: 'Failed to read products' });
+  try {
+    const [products] = await db.query(
+      "SELECT * FROM products WHERE id = ?",
+      [productId]
+    );
+
+    if (products.length === 0) {
+      return res.status(404).json({ error: "Product not found" });
     }
 
-    const products = JSON.parse(productsData);
-    const product = products.find(p => p.id === productId);
+    const product = products[0];
 
-    if (!product) {
-      return res.status(404).json({ error: 'Product not found' });
+    const [existing] = await db.query(
+      "SELECT * FROM cart WHERE id = ?",
+      [productId]
+    );
+
+    if (existing.length > 0) {
+      await db.query(
+        "UPDATE cart SET quantity = quantity + 1 WHERE id = ?",
+        [productId]
+      );
+    } else {
+      await db.query(
+        `INSERT INTO cart (id, name, price, image, category, quantity)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [
+          product.id,
+          product.name,
+          product.price,
+          product.image,
+          product.category,
+          1
+        ]
+      );
     }
 
-    fs.readFile(cartPath, 'utf8', (err, cartData) => {
-      if (err) {
-        return res.status(500).json({ error: 'Failed to read cart' });
-      }
+    const [cart] = await db.query("SELECT * FROM cart");
 
-      let cart = JSON.parse(cartData);
-      const existingItem = cart.find(item => item.id === productId);
+    res.json({ message: "Product added to cart", cart });
 
-      if (existingItem) {
-        existingItem.quantity += 1;
-      } else {
-        cart.push({
-          id: product.id,
-          name: product.name,
-          price: product.price,
-          image: product.image,
-          category: product.category,
-          quantity: 1
-        });
-      }
-
-      fs.writeFile(cartPath, JSON.stringify(cart, null, 2), (err) => {
-        if (err) {
-          return res.status(500).json({ error: 'Failed to update cart' });
-        }
-
-        console.log(`Product added: ${product.name}`);
-
-        const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-        console.log(`Updated total: $${total.toFixed(2)}`);
-
-        res.json({ message: 'Product added to cart', cart });
-      });
-    });
-  });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to update cart" });
+  }
 };
 
-const removeFromCart = (req, res) => {
+const removeFromCart = async (req, res) => {
   const { productId } = req.body;
 
-  fs.readFile(cartPath, 'utf8', (err, cartData) => {
-    if (err) {
-      return res.status(500).json({ error: 'Failed to read cart' });
-    }
+  try {
+    await db.query("DELETE FROM cart WHERE id = ?", [productId]);
 
-    let cart = JSON.parse(cartData);
-    const itemIndex = cart.findIndex(item => item.id === productId);
+    const [cart] = await db.query("SELECT * FROM cart");
 
-    if (itemIndex === -1) {
-      return res.status(404).json({ error: 'Item not found in cart' });
-    }
+    res.json({ message: "Product removed from cart", cart });
 
-    const productName = cart[itemIndex].name;
-    cart.splice(itemIndex, 1);
-
-    fs.writeFile(cartPath, JSON.stringify(cart, null, 2), (err) => {
-      if (err) {
-        return res.status(500).json({ error: 'Failed to update cart' });
-      }
-
-      console.log(`Product removed: ${productName}`);
-
-      const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-      console.log(`Updated total: $${total.toFixed(2)}`);
-
-      res.json({ message: 'Product removed from cart', cart });
-    });
-  });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to remove product" });
+  }
 };
 
 module.exports = {

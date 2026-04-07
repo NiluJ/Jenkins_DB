@@ -16,11 +16,18 @@ function Navbar() {
   };
 
   useEffect(() => {
-    fetchCartTotal();
+  fetchCartTotal();
 
-    const interval = setInterval(fetchCartTotal, 1000);
-    return () => clearInterval(interval);
-  }, []);
+  const handleCartUpdate = () => {
+    fetchCartTotal();
+  };
+
+  window.addEventListener("cartUpdated", handleCartUpdate);
+
+  return () => {
+    window.removeEventListener("cartUpdated", handleCartUpdate);
+  };
+}, []);
 
   return (
     <nav className="navbar">

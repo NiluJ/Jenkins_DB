@@ -24,13 +24,16 @@ function Home() {
   };
 
   const handleAddToCart = async (productId) => {
-    try {
-      await addToCart(productId);
-      alert('Product added to cart!');
-    } catch (error) {
-      console.error('Error adding to cart:', error);
-    }
-  };
+  try {
+    await addToCart(productId);
+
+    window.dispatchEvent(new Event("cartUpdated"));
+
+    alert('Product added to cart!');
+  } catch (error) {
+    console.error('Error adding to cart:', error);
+  }
+};
 
   const bestSellers = products.filter(p => p.bestSeller);
   const latestProducts = products.filter(p => p.latest);

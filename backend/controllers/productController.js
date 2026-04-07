@@ -1,31 +1,31 @@
-const fs = require('fs');
-const path = require('path');
+const db = require("../db");
 
-const productsPath = path.join(__dirname, '../data/products.json');
+const getProducts = async (req, res) => {
+  console.log("Products requested");
 
-const getProducts = (req, res) => {
-  console.log('Products requested');
-
-  fs.readFile(productsPath, 'utf8', (err, data) => {
-    if (err) {
-      return res.status(500).json({ error: 'Failed to read products' });
-    }
-    res.json(JSON.parse(data));
-  });
+  try {
+    const [rows] = await db.query("SELECT * FROM products");
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch products" });
+  }
 };
 
-const getCategories = (req, res) => {
-  console.log('Categories requested');
+const getCategories = async (req, res) => {
+  console.log("Categories requested");
 
-  fs.readFile(productsPath, 'utf8', (err, data) => {
-    if (err) {
-      return res.status(500).json({ error: 'Failed to read products' });
-    }
+  try {
+    const [rows] = await db.query("SELECT DISTINCT category FROM products");
 
-    const products = JSON.parse(data);
-    const categories = [...new Set(products.map(product => product.category))];
+    const categories = rows.map(row => row.category);
+
     res.json(categories);
-  });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch categories" });
+  }
 };
 
 module.exports = {

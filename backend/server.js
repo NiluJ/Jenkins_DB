@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const productRoutes = require('./routes/productRoutes');
 const cartRoutes = require('./routes/cartRoutes');
-
+const path = require("path");
 const app = express();
 const PORT = 5000;
 
@@ -11,6 +11,12 @@ app.use(express.json());
 
 app.use('/api', productRoutes);
 app.use('/api', cartRoutes);
+
+app.use(express.static(path.join(__dirname, "dist")));
+
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "dist", "index.html"));
+});
 
 app.listen(PORT, () => {
   console.log(`Backend server running on http://localhost:${PORT}`);
