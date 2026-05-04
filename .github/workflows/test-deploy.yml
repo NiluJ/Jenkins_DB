@@ -1,0 +1,42 @@
+name: Deploy to Test VM
+
+on:
+  push:
+    branches:
+      - test
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VM_SSH_KEY }}" > ~/.ssh/key.pem
+          chmod 600 ~/.ssh/key.pem
+
+      - name: Deploy to VM
+        run: |
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/key.pem ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} << 'EOF'
+
+          cd ~/Jenkins_DB
+          git pull origin test
+
+          cd backend
+          npm install
+          pm2 restart techstore-backend
+
+          cd ../frontend
+          npm install
+          npm run build
+
+          sudo rm -rf /var/www/html/*
+          sudo cp -r dist/* /var/www/html/
+
+          sudo systemctl restart nginx
+
+          EOF
