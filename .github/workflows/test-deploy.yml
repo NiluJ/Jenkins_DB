@@ -1,0 +1,54 @@
+name: Deploy to Test VM
+
+on:
+  push:
+    branches:
+      - test
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VM_SSH_KEY }}" > ~/.ssh/key.pem
+          chmod 600 ~/.ssh/key.pem
+
+      - name: Deploy to Azure VM
+        run: |
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/key.pem ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} << 'EOF'
+
+          echo "Connected to VM..."
+
+          cd ~/Jenkins_DB
+
+          echo "Pulling latest code..."
+          git pull origin test
+
+          echo "Installing backend dependencies..."
+          cd backend
+          npm install
+
+          echo "Restarting backend..."
+          pm2 restart techstore-backend
+
+          echo "Building frontend..."
+          cd ../frontend
+          npm install
+          npm run build
+
+          echo "Deploying frontend to nginx..."
+          sudo rm -rf /var/www/html/*
+          sudo cp -r dist/* /var/www/html/
+
+          echo "Restarting nginx..."
+          sudo systemctl restart nginx
+
+          echo "Deployment complete!"
+
+          EOF
