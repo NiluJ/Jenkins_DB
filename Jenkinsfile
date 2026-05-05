@@ -1,6 +1,12 @@
 pipeline {
     agent any
 
+    environment {
+        APP_NAME = "uat-backend"
+        APP_PORT = "5002"
+        DEPLOY_PATH = "/var/www/html/uat"
+    }
+
     stages {
 
         stage('Checkout') {
@@ -20,8 +26,8 @@ pipeline {
         stage('Start Backend') {
             steps {
                 dir('backend') {
-                    sh 'pm2 delete uat-backend || true'
-                    sh 'PORT=5002 pm2 start server.js --name uat-backend'
+                    sh "pm2 delete ${APP_NAME} || true"
+                    sh "PORT=${APP_PORT} pm2 start server.js --name ${APP_NAME}"
                 }
             }
         }
@@ -37,11 +43,22 @@ pipeline {
 
         stage('Deploy Frontend') {
             steps {
-                sh 'sudo mkdir -p /var/www/html/uat'
-                sh 'sudo rm -rf /var/www/html/uat/*'
-                sh 'sudo cp -r frontend/dist/* /var/www/html/uat/'
-                sh 'sudo systemctl restart nginx'
+                sh """
+                sudo mkdir -p ${DEPLOY_PATH}
+                sudo rm -rf ${DEPLOY_PATH}/*
+                sudo cp -r frontend/dist/* ${DEPLOY_PATH}/
+                sudo systemctl restart nginx
+                """
             }
+        }
+    }
+
+    post {
+        success {
+            echo "✅ UAT Deployment Successful!"
+        }
+        failure {
+            echo "❌ UAT Deployment Failed!"
         }
     }
 }
