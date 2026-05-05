@@ -33,7 +33,7 @@ function Navbar() {
     <nav className="navbar">
       <div className="nav-container">
         <Link to="/" className="nav-logo">
-          TechStore TEST Branch
+          TechStore uat Branch
         </Link>
 
         <ul className="nav-menu">
