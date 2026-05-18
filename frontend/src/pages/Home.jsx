@@ -76,7 +76,7 @@ function Home() {
       <footer className="footer">
         <div className="footer-content">
           <div className="footer-section">
-            <h3>TechStore</h3>
+            <h3>TechStore Test Branch</h3>
             <p>Premium tech accessories for modern professionals</p>
           </div>
           <div className="footer-section">
