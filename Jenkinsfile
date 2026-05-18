@@ -1,21 +1,25 @@
 pipeline {
     agent any
 
+    tools {
+        nodejs "nodejs"
+    }
+
     environment {
         APP_NAME = "uat-backend"
         APP_PORT = "5002"
-        DEPLOY_PATH = "/var/www/html/uat"
     }
 
     stages {
 
-        stage('Checkout') {
+        stage('Checkout Repository') {
             steps {
-                git branch: 'uat', url: 'https://github.com/NiluJ/Jenkins_DB.git'
+                git branch: 'uat',
+                url: 'https://github.com/NiluJ/Jenkins_DB.git'
             }
         }
 
-        stage('Install Backend') {
+        stage('Install Backend Dependencies') {
             steps {
                 dir('backend') {
                     sh 'npm install'
@@ -23,11 +27,19 @@ pipeline {
             }
         }
 
-        stage('Start Backend') {
+        stage('Create Environment File') {
             steps {
                 dir('backend') {
-                    sh "pm2 delete ${APP_NAME} || true"
-                    sh "PORT=${APP_PORT} pm2 start server.js --name ${APP_NAME}"
+                    sh '''
+                    cat > .env <<EOF
+DB_HOST=localhost
+DB_USER=root
+DB_PASSWORD=Masterchief@117
+DB_NAME=techstoredb
+DB_PORT=3306
+PORT=5002
+EOF
+                    '''
                 }
             }
         }
@@ -41,24 +53,31 @@ pipeline {
             }
         }
 
-        stage('Deploy Frontend') {
+        stage('Copy Frontend Build') {
             steps {
-                sh """
-                sudo mkdir -p ${DEPLOY_PATH}
-                sudo rm -rf ${DEPLOY_PATH}/*
-                sudo cp -r frontend/dist/* ${DEPLOY_PATH}/
-                sudo systemctl restart nginx
-                """
+                sh 'rm -rf backend/dist'
+                sh 'cp -r frontend/dist backend/'
+            }
+        }
+
+        stage('Restart PM2 Application') {
+            steps {
+                dir('backend') {
+                    sh '''
+                    pm2 restart uat-backend --update-env || pm2 start server.js --name uat-backend
+                    '''
+                }
             }
         }
     }
 
     post {
         success {
-            echo "✅ UAT Deployment Successful!"
+            echo "UAT Deployment Successful!"
         }
+
         failure {
-            echo "❌ UAT Deployment Failed!"
+            echo "UAT Deployment Failed!"
         }
     }
 }
