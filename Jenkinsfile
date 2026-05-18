@@ -1,10 +1,6 @@
 pipeline {
     agent any
 
-    tools {
-        nodejs "nodejs"
-    }
-
     environment {
         APP_NAME = "uat-backend"
         APP_PORT = "5002"
