@@ -29,13 +29,22 @@ spec:
           value: "5000"
 
         - name: DB_HOST
-          value: mysql-service
+          valueFrom:
+            secretKeyRef:
+              name: techstore-secret
+              key: DB_HOST
 
         - name: DB_NAME
-          value: techstoredb
+          valueFrom:
+            secretKeyRef:
+              name: techstore-secret
+              key: DB_NAME
 
         - name: DB_PORT
-          value: "3306"
+          valueFrom:
+            secretKeyRef:
+              name: techstore-secret
+              key: DB_PORT
 
         - name: DB_USER
           valueFrom:
